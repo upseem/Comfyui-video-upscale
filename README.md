@@ -43,11 +43,29 @@ ComfyUI/models/vae/seedvr2_ema_vae_fp16.safetensors
 ## 工作流
 
 - **[官方原生 SeedVR2 3B Int8 全视频磁盘分块（5090）](example_workflows/SeedVR2_3B_Int8_Video_Upscale_5090.json)**：先在 Resize/VAE 之前按 49 帧落盘分块，左右各读 8 帧上下文；每个外层块内部继续使用官方自动 latent 分块和 overlap=2，最后裁掉外层上下文并接回原音频。默认处理完整时长。
-- **[RTX PRO 6000 96GB 实测配置](example_workflows/SeedVR2_3B_Int8_Video_Upscale_6000_96GB.json)**：外层 57 帧、左右 context=4，每次最多 65 帧；根据 1080×1920→2160×3840 首轮实测，VAE 峰值约 64.5GB、推理阶段约 18GB。中间 PNG 使用 compress level 0，牺牲临时磁盘以减少 GPU 空闲写盘时间。
+- **[RTX PRO 6000 96GB · 3B Int8 实测配置](example_workflows/SeedVR2_3B_Int8_Video_Upscale_6000_96GB.json)**：外层 57 帧、左右 context=4，每次最多 65 帧；根据 1080×1920→2160×3840 首轮实测，VAE 峰值约 64.5GB、推理阶段约 18GB。中间 PNG 使用 compress level 0，牺牲临时磁盘以减少 GPU 空闲写盘时间。这一版优先用于高吞吐和稳定生产。
+- **[RTX PRO 6000 96GB · 7B FP16 原始非量化配置](example_workflows/SeedVR2_7B_FP16_Video_Upscale_6000_96GB.json)**：保留同一条安全磁盘分块链路，只将官方原生 UNET 权重换为 `seedvr2_7b_fp16.safetensors`，VAE 仍为官方 FP16。适合质量优先对照；模型容量和非量化权重有更高画质潜力，但推理更慢、显存更高。该工作流尚未做 7B GPU 端到端峰值验证，因此首次应处理 2 秒样片；若显存紧张，先把外层 `chunk_size` 从 57 降到 25 或 33，不要关闭磁盘分块。
 - [短片第三方插件质量基准](example_workflows/SeedVR2_5090_short_clip_1080p.json)：旧实验，仅加载很短片段，需要 numz 插件及其 FP16 模型。
 - [第三方插件磁盘循环](example_workflows/SeedVR2_5090_disk_batch_1080p.json)：旧实验，不要与官方原生权重混用。
 
 导入后重新选择实际输入文件，默认占位名是 `input.mp4`。长片建议用 `--cache-none`，同时监测主存、显存和磁盘。外层 chunk 可在 5090 验证后由 49 调大；不要把“latent 自动分块”误认为会在 Resize/VAE 前拆分整段视频。
+
+## 两个 96GB 工作流怎么选
+
+| 工作流 | 权重 | 已验证状态 | 建议用途 |
+| --- | --- | --- | --- |
+| `SeedVR2_3B_Int8_Video_Upscale_6000_96GB.json` | 3B Int8 ConvRot | 已观察首块完整处理；65 帧时 VAE 峰值约 64.5GB | 默认生产、速度优先 |
+| `SeedVR2_7B_FP16_Video_Upscale_6000_96GB.json` | 7B FP16，约 16.48GB | 权重 SHA-256 已验证；工作流静态测试通过，GPU 峰值待测 | 最终质量对照、关键镜头 |
+
+两者都使用 2×、1-step Euler/simple、denoise=1、LAB 色彩校正、官方内部 auto latent chunk + overlap=2。7B 版不是 Sharp 版，优先保持真人、产品和文字的自然观感。模型更大不保证每个镜头都明显更好，应使用同一 2 秒片段做 A/B 比较。
+
+所需模型：
+
+```text
+ComfyUI/models/diffusion_models/seedvr2_3b_int8_convrot.safetensors
+ComfyUI/models/diffusion_models/seedvr2_7b_fp16.safetensors
+ComfyUI/models/vae/seedvr2_ema_vae_fp16.safetensors
+```
 
 ## 验证状态
 

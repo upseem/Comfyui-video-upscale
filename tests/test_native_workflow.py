@@ -51,3 +51,24 @@ def test_6000_profile_uses_measured_safe_batch_and_fast_png():
     assert plan["widgets_values"] == [57, 4]
     assert writer["widgets_values"] == ["overwrite", 0]
     assert any(item["name"] == "png_compress_level" for item in writer["inputs"])
+
+
+def test_6000_7b_fp16_profile_only_changes_model_variant():
+    base_path = WORKFLOW.with_name("SeedVR2_3B_Int8_Video_Upscale_6000_96GB.json")
+    fp16_path = WORKFLOW.with_name("SeedVR2_7B_FP16_Video_Upscale_6000_96GB.json")
+    base = json.loads(base_path.read_text())
+    fp16 = json.loads(fp16_path.read_text())
+    base_graph = base["definitions"]["subgraphs"][0]
+    fp16_graph = fp16["definitions"]["subgraphs"][0]
+    base_unet = next(n for n in base_graph["nodes"] if n["type"] == "UNETLoader")
+    fp16_unet = next(n for n in fp16_graph["nodes"] if n["type"] == "UNETLoader")
+    assert base_unet["widgets_values"][0] == "seedvr2_3b_int8_convrot.safetensors"
+    assert fp16_unet["widgets_values"][0] == "seedvr2_7b_fp16.safetensors"
+    assert next(n for n in fp16_graph["nodes"] if n["type"] == "VAELoader")["widgets_values"][0] == "seedvr2_ema_vae_fp16.safetensors"
+    for data in (base, fp16):
+        plan = next(n for n in data["nodes"] if n["type"] == "VideoUpscaleBatchPlan")
+        writer = next(n for n in data["nodes"] if n["type"] == "VideoUpscaleWriteBatch")
+        assert plan["widgets_values"] == [57, 4]
+        assert writer["widgets_values"] == ["overwrite", 0]
+    # Guard against accidentally embedding the unsafe whole-video topology.
+    assert [n["type"] for n in base["nodes"]] == [n["type"] for n in fp16["nodes"]]
