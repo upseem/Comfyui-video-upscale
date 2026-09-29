@@ -72,3 +72,12 @@ def test_6000_7b_fp16_profile_only_changes_model_variant():
         assert writer["widgets_values"] == ["overwrite", 0]
     # Guard against accidentally embedding the unsafe whole-video topology.
     assert [n["type"] for n in base["nodes"]] == [n["type"] for n in fp16["nodes"]]
+
+
+def test_7b_smoke_test_is_exactly_two_seconds_at_24fps():
+    path = WORKFLOW.with_name("SeedVR2_7B_FP16_SmokeTest_2s_24fps_6000_96GB.json")
+    data = json.loads(path.read_text())
+    prepare = next(n for n in data["nodes"] if n["type"] == "VideoLoopPrepare")
+    plan = next(n for n in data["nodes"] if n["type"] == "VideoUpscaleBatchPlan")
+    assert prepare["widgets_values"][1:4] == [24, 0, 2]
+    assert plan["widgets_values"] == [60, 0]
