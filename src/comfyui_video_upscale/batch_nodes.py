@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import numpy as np
 import torch
 from PIL import Image
@@ -72,12 +73,12 @@ class VideoUpscaleWriteBatch(io.ComfyNode):
             io.String.Input('batch_receipt', force_input=True),
             io.Image.Input('images'),
             io.Combo.Input('existing', options=['overwrite', 'skip_valid', 'fail']),
+            io.Int.Input('png_compress_level', default=0, min=0, max=9,
+                         tooltip='0 is fastest and largest; 3 is a balanced archival default.'),
         ], outputs=[io.String.Output('write_receipt')], is_output_node=True, not_idempotent=True)
 
     @classmethod
-    def execute(cls, job_directory, batch_receipt, images, existing='overwrite'):
-        backend, _ = loop_backend()
-        VideoLoopWriteFrame = backend.VideoLoopWriteFrame
+    def execute(cls, job_directory, batch_receipt, images, existing='overwrite', png_compress_level=0):
         paths, manifest = job(job_directory)
         receipt = json.loads(batch_receipt)
         if receipt['job_directory'] != str(paths.root):
@@ -87,9 +88,29 @@ class VideoUpscaleWriteBatch(io.ComfyNode):
         if images.ndim != 4 or images.shape[-1] != 3:
             raise ValueError('Expected RGB IMAGE tensor [frames, height, width, 3]')
         # Save one frame at a time: never materialize the entire output as numpy.
+        skipped = 0
         for offset in range(plan['keep_count']):
             i = plan['trim_left'] + offset
-            VideoLoopWriteFrame.execute(str(paths.root), plan['start'] + offset,
-                                        images[i:i+1], existing)
-        return io.NodeOutput(json.dumps(dict(start=plan['start'], end=plan['end'],
-                                             context_policy='trim', job_directory=str(paths.root))))
+            frame_index = plan['start'] + offset
+            target = paths.output_frames / f'{frame_index:08d}.png'
+            if target.exists():
+                if existing == 'fail':
+                    raise FileExistsError(target)
+                if existing == 'skip_valid':
+                    try:
+                        with Image.open(target) as old:
+                            old.verify()
+                        skipped += 1
+                        continue
+                    except OSError:
+                        pass
+            array = images[i].detach().cpu().clamp(0, 1).numpy()
+            temporary = target.with_name(f'.{target.name}.{os.getpid()}.tmp.png')
+            Image.fromarray(np.uint8(array * 255.0)).save(
+                temporary, compress_level=png_compress_level)
+            os.replace(temporary, target)
+            del array
+        return io.NodeOutput(json.dumps(dict(
+            start=plan['start'], end=plan['end'], skipped=skipped,
+            png_compress_level=png_compress_level,
+            context_policy='trim', job_directory=str(paths.root))))

@@ -41,3 +41,13 @@ def test_safe_full_video_defaults():
     assert by_id[52]["widgets_values"][0] == "seedvr2_3b_int8_convrot.safetensors"
     assert by_id[51]["widgets_values"][0] == "seedvr2_ema_vae_fp16.safetensors"
     assert by_id[59]["widgets_values"] == ["lab"]
+
+
+def test_6000_profile_uses_measured_safe_batch_and_fast_png():
+    path = WORKFLOW.with_name("SeedVR2_3B_Int8_Video_Upscale_6000_96GB.json")
+    data = json.loads(path.read_text())
+    plan = next(node for node in data["nodes"] if node["type"] == "VideoUpscaleBatchPlan")
+    writer = next(node for node in data["nodes"] if node["type"] == "VideoUpscaleWriteBatch")
+    assert plan["widgets_values"] == [57, 4]
+    assert writer["widgets_values"] == ["overwrite", 0]
+    assert any(item["name"] == "png_compress_level" for item in writer["inputs"])

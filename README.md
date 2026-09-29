@@ -36,13 +36,14 @@ ComfyUI/models/vae/seedvr2_ema_vae_fp16.safetensors
 
 - `VideoUpscaleBatchPlan`：计算块数、上下文配置。
 - `VideoUpscaleReadBatch`：通过 loop 库的磁盘 job 读取连续帧与两侧上下文。
-- `VideoUpscaleWriteBatch`：检查输出帧数，裁掉上下文，通过 loop 原有 writer 原子写回。
+- `VideoUpscaleWriteBatch`：检查输出帧数，裁掉上下文并按原索引原子写回；`png_compress_level=0` 写得最快但临时文件更大，等级 3 更省磁盘。
 
 通过运行时节点注册表解析 loop 库，无需依赖插件文件夹的 Python 包名或加载顺序。当前适配其内部 disk API，升级后需要重新做兼容验证。
 
 ## 工作流
 
-- **[官方原生 SeedVR2 3B Int8 全视频磁盘分块](example_workflows/SeedVR2_3B_Int8_Video_Upscale_5090.json)**：主工作流。先在 Resize/VAE 之前按 49 帧落盘分块，左右各读 8 帧上下文；每个外层块内部继续使用官方自动 latent 分块和 overlap=2，最后裁掉外层上下文并接回原音频。默认处理完整时长。
+- **[官方原生 SeedVR2 3B Int8 全视频磁盘分块（5090）](example_workflows/SeedVR2_3B_Int8_Video_Upscale_5090.json)**：先在 Resize/VAE 之前按 49 帧落盘分块，左右各读 8 帧上下文；每个外层块内部继续使用官方自动 latent 分块和 overlap=2，最后裁掉外层上下文并接回原音频。默认处理完整时长。
+- **[RTX PRO 6000 96GB 实测配置](example_workflows/SeedVR2_3B_Int8_Video_Upscale_6000_96GB.json)**：外层 57 帧、左右 context=4，每次最多 65 帧；根据 1080×1920→2160×3840 首轮实测，VAE 峰值约 64.5GB、推理阶段约 18GB。中间 PNG 使用 compress level 0，牺牲临时磁盘以减少 GPU 空闲写盘时间。
 - [短片第三方插件质量基准](example_workflows/SeedVR2_5090_short_clip_1080p.json)：旧实验，仅加载很短片段，需要 numz 插件及其 FP16 模型。
 - [第三方插件磁盘循环](example_workflows/SeedVR2_5090_disk_batch_1080p.json)：旧实验，不要与官方原生权重混用。
 
