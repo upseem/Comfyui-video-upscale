@@ -42,7 +42,7 @@ ComfyUI/models/vae/seedvr2_ema_vae_fp16.safetensors
 
 ## 工作流
 
-- **[官方原生 SeedVR2 3B Int8 全视频磁盘分块](example_workflows/SeedVR2_3B_Int8_native_disk_batch_5090.json)**：主工作流。先在 Resize/VAE 之前按 49 帧落盘分块，左右各读 8 帧上下文；每个外层块内部继续使用官方自动 latent 分块和 overlap=2，最后裁掉外层上下文并接回原音频。默认处理完整时长。
+- **[官方原生 SeedVR2 3B Int8 全视频磁盘分块](example_workflows/SeedVR2_3B_Int8_Video_Upscale_5090.json)**：主工作流。先在 Resize/VAE 之前按 49 帧落盘分块，左右各读 8 帧上下文；每个外层块内部继续使用官方自动 latent 分块和 overlap=2，最后裁掉外层上下文并接回原音频。默认处理完整时长。
 - [短片第三方插件质量基准](example_workflows/SeedVR2_5090_short_clip_1080p.json)：旧实验，仅加载很短片段，需要 numz 插件及其 FP16 模型。
 - [第三方插件磁盘循环](example_workflows/SeedVR2_5090_disk_batch_1080p.json)：旧实验，不要与官方原生权重混用。
 

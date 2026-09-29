@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 
-WORKFLOW = Path(__file__).parents[1] / "example_workflows/SeedVR2_3B_Int8_native_disk_batch_5090.json"
+WORKFLOW = Path(__file__).parents[1] / "example_workflows/SeedVR2_3B_Int8_Video_Upscale_5090.json"
 
 
 def load():

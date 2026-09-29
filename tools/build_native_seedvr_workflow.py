@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "example_workflows/SeedVR2_5090_disk_batch_1080p.json"
-OUT = ROOT / "example_workflows/SeedVR2_3B_Int8_native_disk_batch_5090.json"
+OUT = ROOT / "example_workflows/SeedVR2_3B_Int8_Video_Upscale_5090.json"
 
 
 def reset(node: dict, node_id: int, pos: list[int]) -> dict:
