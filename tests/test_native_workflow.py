@@ -97,3 +97,18 @@ def test_h3_video_reference_workflow_has_real_video_and_character_edges():
     for link_id, src, out_slot, dst, in_slot, _ in data["links"]:
         assert link_id in nodes[src]["outputs"][out_slot]["links"]
         assert nodes[dst]["inputs"][in_slot]["link"] == link_id
+
+
+def test_h3_pose_character_replacement_hides_source_rgb_from_identity_conditioning():
+    path = WORKFLOW.with_name("MiniMax_H3_Pose_Control_Character_Replacement.json")
+    data = json.loads(path.read_text())
+    nodes = {n["id"]: n for n in data["nodes"]}
+    h3 = next(n for n in data["nodes"] if n["type"] == "MiniMaxH3ReferenceToVideo")
+    inputs = {i["name"]: i for i in h3["inputs"]}
+    assert inputs["ref_images.ref_image_0"]["link"] is not None
+    assert inputs.get("ref_videos.ref_video_0", {}).get("link") is None
+    control = next(n for n in data["nodes"] if n["type"] == "MiniMaxH3FunControlNetApply")
+    assert next(i for i in control["inputs"] if i["name"] == "control_video")["link"] is not None
+    for link_id, src, out_slot, dst, in_slot, _ in data["links"]:
+        assert link_id in nodes[src]["outputs"][out_slot]["links"]
+        assert nodes[dst]["inputs"][in_slot]["link"] == link_id
