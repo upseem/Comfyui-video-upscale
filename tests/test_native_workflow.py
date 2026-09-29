@@ -112,3 +112,16 @@ def test_h3_pose_character_replacement_hides_source_rgb_from_identity_conditioni
     for link_id, src, out_slot, dst, in_slot, _ in data["links"]:
         assert link_id in nodes[src]["outputs"][out_slot]["links"]
         assert nodes[dst]["inputs"][in_slot]["link"] == link_id
+
+
+def test_h3_pose_subgraph_proxy_widgets_do_not_include_socket_inputs():
+    path = WORKFLOW.with_name("MiniMax_H3_Pose_Control_Character_Replacement.json")
+    data = json.loads(path.read_text())
+    pose = next(n for n in data["nodes"] if n["id"] == 700)
+    # resize_target_longer_size and scale_method are top-level socket inputs, not
+    # serialized widgets. Including them shifts class/checkpoint/unet by two.
+    assert pose["widgets_values"] == [
+        True, True, True, True, 4, 2, 0.51, 0.5, "person", 2,
+        "sdpose_wholebody_fp16.safetensors",
+        "rt_detr_v4-x-hgnet_fp16.safetensors",
+    ]
