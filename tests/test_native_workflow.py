@@ -81,3 +81,19 @@ def test_7b_smoke_test_is_exactly_two_seconds_at_24fps():
     plan = next(n for n in data["nodes"] if n["type"] == "VideoUpscaleBatchPlan")
     assert prepare["widgets_values"][1:4] == [24, 0, 2]
     assert plan["widgets_values"] == [60, 0]
+
+
+def test_h3_video_reference_workflow_has_real_video_and_character_edges():
+    path = WORKFLOW.with_name("MiniMax_H3_Video_Reference_Plus_Character_Image.json")
+    data = json.loads(path.read_text())
+    nodes = {n["id"]: n for n in data["nodes"]}
+    h3 = next(n for n in data["nodes"] if n["type"] == "MiniMaxH3ReferenceToVideo")
+    inputs = {i["name"]: i for i in h3["inputs"]}
+    assert inputs["ref_images.ref_image_0"]["link"] is not None
+    assert inputs["ref_videos.ref_video_0"]["link"] is not None
+    assert inputs["ref_video_audios.ref_video_audio_0"]["link"] is not None
+    assert any(n["type"] == "LoadVideo" for n in data["nodes"])
+    assert any(n["type"] == "GetVideoComponents" for n in data["nodes"])
+    for link_id, src, out_slot, dst, in_slot, _ in data["links"]:
+        assert link_id in nodes[src]["outputs"][out_slot]["links"]
+        assert nodes[dst]["inputs"][in_slot]["link"] == link_id
