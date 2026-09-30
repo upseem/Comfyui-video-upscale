@@ -125,3 +125,18 @@ def test_h3_pose_subgraph_proxy_widgets_do_not_include_socket_inputs():
         "sdpose_wholebody_fp16.safetensors",
         "rt_detr_v4-x-hgnet_fp16.safetensors",
     ]
+
+
+def test_h3_character_swap_lora_beach_workflow_matches_author_recipe():
+    path = WORKFLOW.with_name("MiniMax_H3_Character_Swap_LoRA_Beach_5s.json")
+    data = json.loads(path.read_text())
+    loras = [n for n in data["nodes"] if n["type"] == "LoraLoaderModelOnly"]
+    swap = next(n for n in loras if n["id"] == 147)
+    assert swap["widgets_values"] == ["h3_character_swap_pro4500_1000.safetensors", 1]
+    assert next(n for n in data["nodes"] if n["id"] == 141)["widgets_values"] == [False]
+    assert next(n for n in data["nodes"] if n["id"] == 143)["widgets_values"][0] == 20
+    assert next(n for n in data["nodes"] if n["type"] == "ResolutionSelector")["widgets_values"] == ["9:16 (Portrait Widescreen)", 0.4, 32]
+    h3 = next(n for n in data["nodes"] if n["type"] == "MiniMaxH3ReferenceToVideo")
+    inputs = {i["name"]: i["link"] for i in h3["inputs"]}
+    assert inputs["ref_images.ref_image_0"] is not None
+    assert inputs["ref_videos.ref_video_0"] is not None
